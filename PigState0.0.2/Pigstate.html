@@ -51,7 +51,7 @@
                 { frameWidth: 16, frameHeight: 16 });
 
             
-            this.load.spritesheet('perso_idle','assets/pig.png',
+            this.load.spritesheet('pig','assets/pig.png',
                 { frameWidth: 20, frameHeight: 32 });
 
         }
@@ -132,12 +132,22 @@
             
             //creation de l'ennemi
                 
-            this.enemies = game.add.group();
-            this.enemies.enableBody = true;
-            this.enemies.physicsBodyType = Phaser.Physics.ARCADE; 
-            
-            createEnemies();
+            this.enemy = this.physics.add.sprite(380,17,'pig');
+            this.anims.create({
+            frameRate: 10,
+            frames: this.anims.generateFrameNumbers('pig', {start: 0, end:0}),
+            repeat: -1})
+            this.enemy.anims.play('pig');
+
+            this.enemy.body.setSize(20,32);
+            this.enemy.setOffset(0,6);
+            this.physics.add.collider(this.enemy, ground);
+            this.physics.add.collider(this.enemy, this.player);
+
+            this.enemy.body.setSize(20,32);
+            this.enemy.setOffset(0,6);
         }
+        //////////////////////////////update
         update(){
 
             this.moveUp = (this.cursors.up.isDown || this.keys.z.isDown )  
@@ -211,31 +221,29 @@
             console.log(this.distanceGround.x)
             console.log(this.distanceGround.y)
         
+            //Tracking de l'IA
+            this.Difx = this.enemy.x - this.player.x 
+            
+            if (this.enemy.x < this.player.x)
+            this.enemy.setVelocityX(70)
+            if (this.enemy.x > this.player.x)
+            this.enemy.setVelocityX(-70)
+
+            if(this.invincible == true){
+                this.immunityTimer -=1 ;
+                if(this.immunityTimer == 0){
+                    this.immunityTimer = 100;
+                    this.player.setTint(0xffffff);
+                    this.invincible = false ;
+                }
+            }
         
         }
 
        
     
     }
-    function createEnemies(){
-            for(var y = 0; y< 4; y++){
-                for(var x = 0; x< 10;x++){
-                    var enemy = enemies.create(x*48,y*50,'enemy');
-                    enemy.anchor.setTo(0.5,0.5);
-                }
-            }
-
-            enemies.x = 100;
-            enemies.y = 50;
-
-            var tween = game.add.tween(enemies).to({x:200},2000,Phaser.Easing.Linear.None,true,0,1000,);
-
-            tween.onLoop.add(descend,this);
-
-        }
-    function descend(){
-            enemies.y += 10;
-    }
+   
    
  /////////////////////////////////////////////////////////CHANGEMENT DE SCENE //////////////////////////////////////
 
@@ -424,7 +432,7 @@
             default: 'arcade',
             arcade: {
             gravity: { y: 1000 },
-            debug: true
+            debug: false
             }},
             pixelArt:true,
             scene: [sceneJeu,sceneJeucombat],
