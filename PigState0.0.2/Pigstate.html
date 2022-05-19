@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><title>Mon 1er jeu Phaser</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.51.0/dist/phaser.js">
+    </script>
+
+    <style type="text/css"> body 
+    
+        { margin: 0; 
+        }
+ 
+        #endGame{
+            display: none;
+            font-size: 100px;
+            color: red;
+            padding-top: 230px;
+            padding-left:110px ;
+            position:absolute;
+            z-index:1
+        }
+
+        
+    
+    </style>
+</head>
+<body>
+    <script type="text/javascript">
+
+        class sceneJeu extends Phaser.Scene{
+            constructor(){
+            super("sceneJeu");
+
+            var enemies;
+        }
+        init(data){
+            this.joueurpv = data.joueurpv
+            this.maxpv = data.maxpv
+        } 
+        preload(){
+            this.load.image("Phaser_tuilesdejeu", "assets/envi_asset.png");
+
+            this.load.tilemapTiledJSON("carte", "assets/map_4.json");
+
+            this.load.spritesheet("perso","assets/player_character.png",
+            { frameWidth: 16, frameHeight: 16 }); 
+            
+            this.load.image("invisible", "assets/invisible.png");
+
+            this.load.spritesheet('perso_idle','assets/player_character_idle.png',
+                { frameWidth: 16, frameHeight: 16 });
+
+            
+            this.load.spritesheet('perso_idle','assets/pig.png',
+                { frameWidth: 20, frameHeight: 32 });
+
+        }
+        create (){ 
+            const carteDuNiveau = this.add.tilemap("carte");
+
+            const tileset = carteDuNiveau.addTilesetImage(
+                    "envi_asset",
+                    "Phaser_tuilesdejeu"
+                    );      
+
+            const fond1 = carteDuNiveau.createLayer(
+                    "background1",
+                    tileset
+                    );
+
+            const fond = carteDuNiveau.createLayer(
+                    "background",
+                    tileset
+                    ); 
+
+            const ground = carteDuNiveau.createLayer(
+                    "ground",
+                    tileset
+                    ); 
+
+            this.player = this.physics.add.sprite(30, 1500, 'perso');
+            this.player.setBounce(0.3);
+            this.player.setCollideWorldBounds(true);
+            this.physics.add.collider(this.player, ground);
+
+            ground.setCollisionByProperty({estSolide: true})
+
+            //SETUP CAMERA 
+            this.cameras.main.zoom =2;
+            this.physics.world.setBounds(0, 0, 3000, 5000);
+            this.cameras.main.setBounds(0, 0, 3000, 5000);
+            this.cameras.main.startFollow(this.player);
+
+            this.cursors = this.input.keyboard.createCursorKeys();
+            this.keys = this.input.keyboard.addKeys({
+                    z:  Phaser.Input.Keyboard.KeyCodes.Z,
+                    q:  Phaser.Input.Keyboard.KeyCodes.Q,
+                    s:  Phaser.Input.Keyboard.KeyCodes.S,
+                    d:  Phaser.Input.Keyboard.KeyCodes.D,
+                });
+
+                this.distanceGround = this.add.image(0,0,'invisible')
+
+        
+                this.tombe = false
+
+            //test animation
+            this.anims.create({
+                key: 'left',
+                frames: this.anims.generateFrameNumbers('perso', {start:0,end:3}),
+                frameRate: 10,
+                repeat: -1
+                });
+                this.anims.create({
+                key: 'right',
+                frames: this.anims.generateFrameNumbers('perso', {start:4,end:8}),
+                frameRate: 10,
+                repeat: -1
+                })
+                this.anims.create({
+                key: 'idleGauche',
+                frames: this.anims.generateFrameNumbers('perso_idle', {start:0,end:3}),
+                frameRate: 10,
+                repeat: -1
+                });
+                this.anims.create({
+                key: 'idleDroit',
+                frames: this.anims.generateFrameNumbers('perso_idle', {start:2,end:4}),
+                frameRate: 10,
+                repeat: -1
+                });
+            
+            //creation de l'ennemi
+                
+            this.enemies = game.add.group();
+            this.enemies.enableBody = true;
+            this.enemies.physicsBodyType = Phaser.Physics.ARCADE; 
+            
+            createEnemies();
+        }
+        update(){
+
+            this.moveUp = (this.cursors.up.isDown || this.keys.z.isDown )  
+                this.moveLeft = (this.cursors.left.isDown || this.keys.q.isDown )  
+                this.moveRight = (this.cursors.right.isDown || this.keys.d.isDown ) 
+                this.moveDown = (this.cursors.down.isDown || this.keys.s.isDown )
+            
+             //déplacements du joueur
+             if (this.moveLeft) {
+                this.player.body.setVelocityX(-110)
+            } else if (this.moveRight) {
+                this.player.body.setVelocityX(110)
+            }
+
+            if (this.moveUp) {
+                if (this.tombe == false){
+                    this.player.body.setVelocityY(-100)
+                }
+            } else if (this.moveDown) {
+                this.player.body.setVelocityY(100)
+            }
+
+
+
+           
+
+
+            if (this.moveUp) {
+                this.player.anims.play('up', true)
+            } else if (this.moveDown) {
+                this.player.anims.play('down', true)
+            } else
+            if (this.moveLeft) {
+                this.player.anims.play('left', true)
+            } else if (this.moveRight) {
+                this.player.anims.play('right', true)
+            }
+            //Permet le déplacement correct dans les angles
+            if (this.cursors.up.isUp && this.cursors.down.isUp && this.cursors.left.isUp && this.cursors.right.isUp){
+                this.player.anims.play('noMove', true);
+                this.player.setVelocityX(0)
+        
+            }
+            if(this.jump==false){
+                        if (this.player.direction == 'left'){
+                            this.player.anims.play('idleDroite', true); //et animation => gauche
+                        }
+                        if (this.player.direction == 'right'){
+                            this.player.anims.play('idleGauche', true); //et animation => gauche
+                        }
+                    }
+
+            //Système de plannée joueur .
+            this.distanceGround.x = this.player.x
+            
+
+            if (this.player.body.blocked.down){
+                this.distanceGround.y = this.player.y
+            }
+
+            if (this.player.y < this.distanceGround.y - 48 ){
+                this.tombe = true
+                this.player.body.setVelocityY(0)
+            }
+            else{
+                this.tombe = false
+            }
+            
+
+
+            console.log(this.distanceGround.x)
+            console.log(this.distanceGround.y)
+        
+        
+        }
+
+       
+    
+    }
+    function createEnemies(){
+            for(var y = 0; y< 4; y++){
+                for(var x = 0; x< 10;x++){
+                    var enemy = enemies.create(x*48,y*50,'enemy');
+                    enemy.anchor.setTo(0.5,0.5);
+                }
+            }
+
+            enemies.x = 100;
+            enemies.y = 50;
+
+            var tween = game.add.tween(enemies).to({x:200},2000,Phaser.Easing.Linear.None,true,0,1000,);
+
+            tween.onLoop.add(descend,this);
+
+        }
+    function descend(){
+            enemies.y += 10;
+    }
+   
+ /////////////////////////////////////////////////////////CHANGEMENT DE SCENE //////////////////////////////////////
+
+    class sceneJeucombat extends Phaser.Scene{
+            constructor(){
+            super("sceneJeucombat");
+        }
+        init(data){
+        } 
+        preload(){
+            this.load.image("Phaser_tuilesdejeu", "assets/envi_asset.png");
+
+            this.load.tilemapTiledJSON("carte", "assets/map_4.json");
+
+            this.load.spritesheet("perso","assets/player_character.png",
+            { frameWidth: 16, frameHeight: 16 }); 
+            
+            this.load.image("invisible", "assets/invisible.png");
+
+            this.load.spritesheet('perso_idle','assets/player_character_idle.png',
+                { frameWidth: 16, frameHeight: 16 });
+
+        }
+        create (){ 
+            const carteDuNiveau = this.add.tilemap("carte");
+
+            const tileset = carteDuNiveau.addTilesetImage(
+                    "envi_asset",
+                    "Phaser_tuilesdejeu"
+                    );      
+
+            const fond1 = carteDuNiveau.createLayer(
+                    "background1",
+                    tileset
+                    );
+
+            const fond = carteDuNiveau.createLayer(
+                    "background",
+                    tileset
+                    ); 
+
+            const ground = carteDuNiveau.createLayer(
+                    "ground",
+                    tileset
+                    ); 
+
+            this.player = this.physics.add.sprite(30, 1500, 'perso');
+            this.player.setBounce(0.3);
+            this.player.setCollideWorldBounds(true);
+            this.physics.add.collider(this.player, ground);
+
+            ground.setCollisionByProperty({estSolide: true})
+
+            //SETUP CAMERA 
+            this.cameras.main.zoom =2;
+            this.physics.world.setBounds(0, 0, 3000, 5000);
+            this.cameras.main.setBounds(0, 0, 3000, 5000);
+            this.cameras.main.startFollow(this.player);
+
+            this.cursors = this.input.keyboard.createCursorKeys();
+            this.keys = this.input.keyboard.addKeys({
+                    z:  Phaser.Input.Keyboard.KeyCodes.Z,
+                    q:  Phaser.Input.Keyboard.KeyCodes.Q,
+                    s:  Phaser.Input.Keyboard.KeyCodes.S,
+                    d:  Phaser.Input.Keyboard.KeyCodes.D,
+                });
+
+                this.distanceGround = this.add.image(0,0,'invisible')
+
+        
+                this.tombe = false
+
+            //test animation
+            this.anims.create({
+                key: 'left',
+                frames: this.anims.generateFrameNumbers('perso', {start:0,end:3}),
+                frameRate: 10,
+                repeat: -1
+                });
+                this.anims.create({
+                key: 'right',
+                frames: this.anims.generateFrameNumbers('perso', {start:4,end:8}),
+                frameRate: 10,
+                repeat: -1
+                })
+                this.anims.create({
+                key: 'idleGauche',
+                frames: this.anims.generateFrameNumbers('perso_idle', {start:0,end:3}),
+                frameRate: 10,
+                repeat: -1
+                });
+                this.anims.create({
+                key: 'idleDroit',
+                frames: this.anims.generateFrameNumbers('perso_idle', {start:2,end:4}),
+                frameRate: 10,
+                repeat: -1
+                });
+                
+        }
+        update(){
+
+            this.moveUp = (this.cursors.up.isDown || this.keys.z.isDown )  
+                this.moveLeft = (this.cursors.left.isDown || this.keys.q.isDown )  
+                this.moveRight = (this.cursors.right.isDown || this.keys.d.isDown ) 
+                this.moveDown = (this.cursors.down.isDown || this.keys.s.isDown )
+            
+             //déplacements du joueur
+             if (this.moveLeft) {
+                this.player.body.setVelocityX(-110)
+            } else if (this.moveRight) {
+                this.player.body.setVelocityX(110)
+            }
+
+            if (this.moveUp) {
+                if (this.tombe == false){
+                    this.player.body.setVelocityY(-100)
+                }
+            } else if (this.moveDown) {
+                this.player.body.setVelocityY(100)
+            }
+
+
+
+           
+
+
+            if (this.moveUp) {
+                this.player.anims.play('up', true)
+            } else if (this.moveDown) {
+                this.player.anims.play('down', true)
+            } else
+            if (this.moveLeft) {
+                this.player.anims.play('left', true)
+            } else if (this.moveRight) {
+                this.player.anims.play('right', true)
+            }
+            //Permet le déplacement correct dans les angles
+            if (this.cursors.up.isUp && this.cursors.down.isUp && this.cursors.left.isUp && this.cursors.right.isUp){
+                this.player.anims.play('noMove', true);
+                this.player.setVelocityX(0)
+        
+            }
+            if(this.jump==false){
+                        if (this.player.direction == 'left'){
+                            this.player.anims.play('idleDroite', true); //et animation => gauche
+                        }
+                        if (this.player.direction == 'right'){
+                            this.player.anims.play('idleGauche', true); //et animation => gauche
+                        }
+                    }
+
+            //Système de plannée joueur .
+            this.distanceGround.x = this.player.x
+            
+
+            if (this.player.body.blocked.down){
+                this.distanceGround.y = this.player.y
+            }
+
+            if (this.player.y < this.distanceGround.y - 48 ){
+                this.tombe = true
+                this.player.body.setVelocityY(0)
+            }
+            else{
+                this.tombe = false
+            }
+            
+
+
+            console.log(this.distanceGround.x)
+            console.log(this.distanceGround.y)
+        
+        
+        }
+
+
+        
+    
+    }
+
+    var config = {
+            type: Phaser.AUTO,
+            width: 768, height: 432,
+            //width: 1536, height: 864,
+            physics: {
+            default: 'arcade',
+            arcade: {
+            gravity: { y: 1000 },
+            debug: true
+            }},
+            pixelArt:true,
+            scene: [sceneJeu,sceneJeucombat],
+            };
+
+        new Phaser.Game(config);  
+
+
+    </script>
+</body>
+</html>
