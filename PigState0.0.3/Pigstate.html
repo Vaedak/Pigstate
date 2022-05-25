@@ -30,12 +30,16 @@
         class sceneJeu extends Phaser.Scene{
             constructor(){
             super("sceneJeu");
-
-            var enemies;
+            this.joueurpv=3;
+            this.enemies;
+            this.invincible=false;
+            
         }
         init(data){
-            this.joueurpv = data.joueurpv
-            this.maxpv = data.maxpv
+            this.joueurpv = data.joueurpv;
+            this.maxpv = data.maxpv;
+            this.coordPlayerX=data.coordPlayerX;
+            this.coordPlayerY=data.coordPlayerY;
         } 
         preload(){
             this.load.image("Phaser_tuilesdejeu", "assets/envi_asset.png");
@@ -56,12 +60,26 @@
 
         }
         create (){ 
+
+
+            /// AJOUT DE CARTE DE NIVEAU //////////////
+
             const carteDuNiveau = this.add.tilemap("carte");
 
             const tileset = carteDuNiveau.addTilesetImage(
                     "envi_asset",
                     "Phaser_tuilesdejeu"
-                    );      
+                    );  
+
+            const fonddernier = carteDuNiveau.createLayer(
+                    "last_background",
+                    tileset
+                    );
+
+            const fond3 = carteDuNiveau.createLayer(
+                    "background3",
+                    tileset
+                    );
 
             const fond1 = carteDuNiveau.createLayer(
                     "background1",
@@ -78,7 +96,10 @@
                     tileset
                     ); 
 
-            this.player = this.physics.add.sprite(30, 1500, 'perso');
+
+
+            ///// AJOUT JOUEUR //////
+            this.player = this.physics.add.sprite(30, 500, 'perso');
             this.player.setBounce(0.3);
             this.player.setCollideWorldBounds(true);
             this.physics.add.collider(this.player, ground);
@@ -91,6 +112,7 @@
             this.cameras.main.setBounds(0, 0, 3000, 5000);
             this.cameras.main.startFollow(this.player);
 
+            //// AJOUT NOUVELLES TOUCHES /////////
             this.cursors = this.input.keyboard.createCursorKeys();
             this.keys = this.input.keyboard.addKeys({
                     z:  Phaser.Input.Keyboard.KeyCodes.Z,
@@ -99,6 +121,7 @@
                     d:  Phaser.Input.Keyboard.KeyCodes.D,
                 });
 
+            //// PROCEDURE DE BLOCKAGE DE HAUTEUR ///////
                 this.distanceGround = this.add.image(0,0,'invisible')
 
         
@@ -147,7 +170,7 @@
             this.enemy.body.setSize(20,32);
             this.enemy.setOffset(0,6);
         }
-        //////////////////////////////update
+///////////////////////////////////////////////////////////////////UPDATE///////////////////
         update(){
 
             this.moveUp = (this.cursors.up.isDown || this.keys.z.isDown )  
@@ -191,6 +214,7 @@
                 this.player.setVelocityX(0)
         
             }
+//////////////////Jouer animation Idle
             if(this.jump==false){
                         if (this.player.direction == 'left'){
                             this.player.anims.play('idleDroite', true); //et animation => gauche
@@ -203,7 +227,7 @@
             //Système de plannée joueur .
             this.distanceGround.x = this.player.x
             
-
+////////////Suite procédure tombe
             if (this.player.body.blocked.down){
                 this.distanceGround.y = this.player.y
             }
@@ -244,9 +268,9 @@
     
     }
    
-   
- /////////////////////////////////////////////////////////CHANGEMENT DE SCENE //////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////CHANGEMENT DE SCENE : Scene 2//////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     class sceneJeucombat extends Phaser.Scene{
             constructor(){
             super("sceneJeucombat");
