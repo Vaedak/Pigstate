@@ -33,6 +33,9 @@
             this.joueurpv=3;
             this.enemies;
             this.invincible=false;
+            this.shot=0;
+            this.detected=false;
+            this.vue=0
             
         }
         init(data){
@@ -79,12 +82,12 @@
             const fond3 = carteDuNiveau.createLayer(
                     "background3",
                     tileset
-                    );
+                    ).setScrollFactor(0.80,1);
 
             const fond1 = carteDuNiveau.createLayer(
                     "background1",
                     tileset
-                    );
+                    ).setScrollFactor(0.52,1);
 
             const fond = carteDuNiveau.createLayer(
                     "background",
@@ -94,12 +97,13 @@
             const ground = carteDuNiveau.createLayer(
                     "ground",
                     tileset
-                    ); 
+                    );
+
 
 
 
             ///// AJOUT JOUEUR //////
-            this.player = this.physics.add.sprite(30, 500, 'perso');
+            this.player = this.physics.add.sprite(30, 1450, 'perso');
             this.player.setBounce(0.3);
             this.player.setCollideWorldBounds(true);
             this.physics.add.collider(this.player, ground);
@@ -155,7 +159,7 @@
             
             //creation de l'ennemi
                 
-            this.enemy = this.physics.add.sprite(380,17,'pig');
+            this.enemy = this.physics.add.sprite(600,1450,'pig');
             this.anims.create({
             frameRate: 10,
             frames: this.anims.generateFrameNumbers('pig', {start: 0, end:0}),
