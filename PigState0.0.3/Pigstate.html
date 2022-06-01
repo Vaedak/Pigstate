@@ -158,21 +158,36 @@
                 });
             
             //creation de l'ennemi
-                
-            this.enemy = this.physics.add.sprite(600,1450,'pig');
+            this.pig_soldier = this.physics.add.group({
+                key:'soldier',
+            });    
+            //creation du projectile
+            this.pig_sight = this.physics.add.group({
+                key:'sight',
+                allowGravity : false,
+            });            
+            
             this.anims.create({
             frameRate: 10,
             frames: this.anims.generateFrameNumbers('pig', {start: 0, end:0}),
             repeat: -1})
-            this.enemy.anims.play('pig');
+            
 
-            this.enemy.body.setSize(20,32);
-            this.enemy.setOffset(0,6);
-            this.physics.add.collider(this.enemy, ground);
-            this.physics.add.collider(this.enemy, this.player);
+            this.physics.add.collider(this.pig_soldier, ground);
+            this.physics.add.collider(this.pig_soldier, this.player);
+            this.physics.add.collider(this.pig_sight, ground,this.destroySight,null,this);
 
-            this.enemy.body.setSize(20,32);
-            this.enemy.setOffset(0,6);
+
+
+            //this.physics.add.overlap(this.pigSight,this.player,this.detected,null,this);
+
+
+            ////////////////PLACEMENT OBJETS SUR CARTE//////////
+
+            carteDuNiveau.getObjectLayer('enemy').objects.forEach((soldier)=>{
+                const soldierSprite = this.pig_soldier.create(soldier.x,soldier.y-soldier.height,'pig').setOrigin(0).setOffset(0,6).setSize(20,32);
+                //console.log(soldier.x)
+            });
         }
 ///////////////////////////////////////////////////////////////////UPDATE///////////////////
         update(){
@@ -246,16 +261,39 @@
             
 
 
-            console.log(this.distanceGround.x)
-            console.log(this.distanceGround.y)
-        
+            //console.log(this.distanceGround.x)
+            //console.log(this.distanceGround.y)
             //Tracking de l'IA
-            this.Difx = this.enemy.x - this.player.x 
-            
-            if (this.enemy.x < this.player.x)
-            this.enemy.setVelocityX(70)
-            if (this.enemy.x > this.player.x)
-            this.enemy.setVelocityX(-70)
+            this.pig_soldier.children.iterate(function (soldiers) {
+                
+            // this.Difx = soldiers.x - soldiers.scene.player.x 
+                    if (soldiers.x < soldiers.scene.player.x)
+                soldiers.setVelocityX(70)
+                if (soldiers.x > soldiers.scene.player.x)
+                soldiers.setVelocityX(-70)
+                var distance = Phaser.Math.Distance.Between(soldiers.scene.player.x,soldiers.scene.player.y,soldiers.x,soldiers.y)
+                console.log(distance)//obtenir la distance qui sépare le monstre et le joueur
+
+                //génération du tir par coté 
+                    var sight_left=this.pig_sight.create(soldiers.x, soldiers.y);
+                if (soldiers.body.velocity.x < 0)sight_left.setVelocityX(-400)
+                else  sight_left.setVelocityX(400)         
+                    
+                
+        
+                   
+                    
+
+                   
+                
+                    
+                    
+
+                
+                    
+                    
+            },this);
+
 
             if(this.invincible == true){
                 this.immunityTimer -=1 ;
@@ -268,9 +306,10 @@
         
         }
 
-       
-    
+       destroySight(pigSight){
+        pigSight.destroy()
     }
+}
    
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////CHANGEMENT DE SCENE : Scene 2//////////////////////////////////////////////////////////////////////////////////////////////
@@ -460,7 +499,7 @@
             default: 'arcade',
             arcade: {
             gravity: { y: 1000 },
-            debug: false
+            debug: true
             }},
             pixelArt:true,
             scene: [sceneJeu,sceneJeucombat],
