@@ -35,7 +35,8 @@
             this.invincible=false;
             this.shot=0;
             this.detected=false;
-            this.vue=0
+            this.vue=0;
+            this.level=0;
             
         }
         init(data){
@@ -60,6 +61,8 @@
             
             this.load.spritesheet('pig','assets/pig.png',
                 { frameWidth: 20, frameHeight: 32 });
+            
+            this.load.audio("alarm", 'assets/alarm.ogg');
 
         }
         create (){ 
@@ -176,6 +179,7 @@
             this.physics.add.collider(this.pig_soldier, ground);
             this.physics.add.collider(this.pig_soldier, this.player);
             this.physics.add.collider(this.pig_sight, ground,this.destroySight,null,this);
+            this.physics.add.overlap(this.pig_sight,this.player,this.detectionOn,null,this);
 
 
 
@@ -188,6 +192,9 @@
                 const soldierSprite = this.pig_soldier.create(soldier.x,soldier.y-soldier.height,'pig').setOrigin(0).setOffset(0,6).setSize(20,32);
                 //console.log(soldier.x)
             });
+
+
+            this.alarm= this.sound.add("alarm", {loop: false});
         }
 ///////////////////////////////////////////////////////////////////UPDATE///////////////////
         update(){
@@ -236,10 +243,10 @@
 //////////////////Jouer animation Idle
             if(this.jump==false){
                         if (this.player.direction == 'left'){
-                            this.player.anims.play('idleDroite', true); //et animation => gauche
+                            this.player.anims.play('idleDroite', true);
                         }
                         if (this.player.direction == 'right'){
-                            this.player.anims.play('idleGauche', true); //et animation => gauche
+                            this.player.anims.play('idleGauche', true); 
                         }
                     }
 
@@ -267,18 +274,36 @@
             this.pig_soldier.children.iterate(function (soldiers) {
                 
             // this.Difx = soldiers.x - soldiers.scene.player.x 
+            if (this.level = 0){
+                soldiers.setvelocityx(10)
+                
+            }
+            if (this.level = 1){
                     if (soldiers.x < soldiers.scene.player.x)
                 soldiers.setVelocityX(70)
                 if (soldiers.x > soldiers.scene.player.x)
                 soldiers.setVelocityX(-70)
                 var distance = Phaser.Math.Distance.Between(soldiers.scene.player.x,soldiers.scene.player.y,soldiers.x,soldiers.y)
                 console.log(distance)//obtenir la distance qui sépare le monstre et le joueur
+                };
 
                 //génération du tir par coté 
                     var sight_left=this.pig_sight.create(soldiers.x, soldiers.y);
                 if (soldiers.body.velocity.x < 0)sight_left.setVelocityX(-400)
                 else  sight_left.setVelocityX(400)         
                     
+            
+
+
+
+            if (this.level = 1){
+                    
+                if (soldiers.x < soldiers.scene.player.x)
+                soldiers.setVelocityX(70)
+                if (soldiers.x > soldiers.scene.player.x)
+                soldiers.setVelocityX(-70)
+                var distance = Phaser.Math.Distance.Between(soldiers.scene.player.x,soldiers.scene.player.y,soldiers.x,soldiers.y)
+            };
                 
         
                    
@@ -305,10 +330,18 @@
             }
         
         }
-
+/////////////////////procédures////////////////////////////
        destroySight(pigSight){
         pigSight.destroy()
-    }
+       }
+
+       detectionOn(pigSight,player){
+        this.cameras.main.shake(15);
+        this.detected = true
+        this.alarm.play();
+        this.level = 1
+       }
+    
 }
    
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
