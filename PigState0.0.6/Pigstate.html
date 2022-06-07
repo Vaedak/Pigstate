@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>PIGSTATE</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.51.0/dist/phaser.js">
+    </script>
+
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+
+        #endGame {
+            display: none;
+            font-size: 100px;
+            color: red;
+            padding-top: 230px;
+            padding-left: 110px;
+            position: absolute;
+            z-index: 1
+        }
+    </style>
+</head>
+
+
+
+<body>
+    <script type="text/javascript">
+
+        class menuJeu extends Phaser.Scene {
+            constructor() {
+                super("menuJeu");
+            }
+            preload() {
+                this.load.image("titlescreen", "assets/titlescreen.png");
+                this.load.image("playbutton", "assets/playbutton.png");
+                this.load.image("logo", "assets/game_logo.png");
+                
+            }
+            create() {
+                //this.add.image(this.cameras.main.width/2,this.cameras.main.height/2,"menu_screen").setScale(1.2);
+
+                this.menuscreen = this.add.image(340, 230, 'titlescreen').setScale(1.8);
+                this.menuscreen = this.add.image(335, 70, 'logo').setScale(2.5);
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.startButton = this.add.image(68, 230, 'playbutton').setInteractive().setScale(1.8);
+                // var startButton = this.add.image(68,330, 'menu_play_button').setScale(1.2).setInteractive();
+
+                this.startButton.on('pointerdown', function (pointer) {
+
+                    this.scene.scene.start("sceneJeu", {
+
+
+                    })
+
+                });
+            }
+            update() {
+
+            }
+        }
+
+
+        class sceneJeu extends Phaser.Scene {
+            constructor() {
+                super("sceneJeu");
+                this.joueurpv = 3;
+                this.enemies;
+                this.invincible = false;
+                this.shot = 0;
+                this.detected = false;
+                this.vue = true;
+                this.level = 0;
+                this.originenemy = 0;
+                this.originactivator = false;
+                this.alarm_no_loop = 0;
+                this.enemy_move = false;
+                this.enemy_wait = 0;
+                this.alarm_counter = 0;
+                this.balistic_timer = 0;
+                this.hiding = 0;
+                this.shooting_counter = 0;
+                this.immunityTimer = 100;
+            }
+            init(data) {
+
+                this.maxpv = data.maxpv;
+                this.coordPlayerX = data.coordPlayerX;
+                this.coordPlayerY = data.coordPlayerY;
+            }
+            preload() {
+                this.load.image("Phaser_tuilesdejeu", "assets/envi_asset.png");
+
+                this.load.tilemapTiledJSON("carte", "assets/map_4.json");
+
+                this.load.spritesheet("perso", "assets/player_character.png",
+                    { frameWidth: 16, frameHeight: 16 });
+
+                this.load.image("invisible", "assets/invisible.png");
+
+                this.load.image("sight", "assets/invisible_g.png");
+
+                this.load.image("shoot", "assets/shot.png");
+
+                this.load.image("EYE", "assets/alarm_logo_0.png");
+
+                this.load.image("EYE1", "assets/alarm_logo_1.png");
+
+                this.load.image("EYE2", "assets/alarm_logo_2.png");
+
+                this.load.spritesheet('perso_idle', 'assets/player_character_idle.png',
+                    { frameWidth: 16, frameHeight: 16 });
+
+
+                this.load.spritesheet('pig', 'assets/pig.png',
+                    { frameWidth: 20, frameHeight: 32 });
+
+                this.load.audio("alarm", 'assets/alarm.ogg');
+
+                this.load.audio("combat", 'assets/light_combat.ogg');
+
+                this.load.audio("shooting", 'assets/9mmshoot.ogg')
+
+            }
+            create() {
+
+
+                /// AJOUT DE CARTE DE NIVEAU //////////////
+
+                const carteDuNiveau = this.add.tilemap("carte");
+
+                const tileset = carteDuNiveau.addTilesetImage(
+                    "envi_asset",
+                    "Phaser_tuilesdejeu"
+                );
+
+                const fonddernier = carteDuNiveau.createLayer(
+                    "last_background",
+                    tileset
+                );
+
+                const fond4 = carteDuNiveau.createLayer(
+                    "background4",
+                    tileset
+                );//.setScrollFactor(0.30, 1);
+
+
+                const fond3 = carteDuNiveau.createLayer(
+                    "background3",
+                    tileset
+                );//.setScrollFactor(0.80, 1);
+
+                const fond1 = carteDuNiveau.createLayer(
+                    "background1",
+                    tileset
+                );//.setScrollFactor(0.52, 1);
+
+                const fond = carteDuNiveau.createLayer(
+                    "background",
+                    tileset
+                );
+
+                const ground = carteDuNiveau.createLayer(
+                    "ground",
+                    tileset
+                );
+
+
+
+
+                ///// AJOUT JOUEUR //////
+                this.player = this.physics.add.sprite(30, 1450, 'perso');
+                this.player.setBounce(0.3);
+                this.player.setCollideWorldBounds(true);
+                this.physics.add.collider(this.player, ground);
+
+                ground.setCollisionByProperty({ estSolide: true })
+
+                //SETUP CAMERA 
+                this.cameras.main.zoom = 2;
+                this.physics.world.setBounds(0, 0, 3000, 5000);
+                this.cameras.main.setBounds(0, 0, 3000, 5000);
+                this.cameras.main.startFollow(this.player);
+
+                //// AJOUT NOUVELLES TOUCHES /////////
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.keys = this.input.keyboard.addKeys({
+                    z: Phaser.Input.Keyboard.KeyCodes.Z,
+                    q: Phaser.Input.Keyboard.KeyCodes.Q,
+                    s: Phaser.Input.Keyboard.KeyCodes.S,
+                    d: Phaser.Input.Keyboard.KeyCodes.D,
+                    g: Phaser.Input.Keyboard.KeyCodes.G,
+                });
+
+                //// PROCEDURE DE BLOCKAGE DE HAUTEUR ///////
+                this.distanceGround = this.add.image(0, 0, 'invisible')
+
+
+                this.tombe = false
+
+                //test animation
+                this.anims.create({
+                    key: 'left',
+                    frames: this.anims.generateFrameNumbers('perso', { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+                this.anims.create({
+                    key: 'right',
+                    frames: this.anims.generateFrameNumbers('perso', { start: 4, end: 8 }),
+                    frameRate: 10,
+                    repeat: -1
+                })
+                this.anims.create({
+                    key: 'idleGauche',
+                    frames: this.anims.generateFrameNumbers('perso_idle', { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+                this.anims.create({
+                    key: 'idleDroit',
+                    frames: this.anims.generateFrameNumbers('perso_idle', { start: 2, end: 4 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+
+
+
+                this.pig_shot = this.physics.add.group({
+                    key: 'pig_shot',
+                    allowGravity: false,
+                });
+                //creation de l'ennemi
+                this.pig_soldier = this.physics.add.group({
+                    key: 'soldier',
+                });
+                //creation du projectile
+                this.pig_sight = this.physics.add.group({
+                    key: 'sight',
+                    allowGravity: false,
+                });
+
+                this.anims.create({
+                    frameRate: 10,
+                    frames: this.anims.generateFrameNumbers('pig', { start: 0, end: 0 }),
+                    repeat: -1
+                })
+
+
+                this.physics.add.collider(this.pig_soldier, ground);
+                this.physics.add.collider(this.pig_sight, ground, this.destroySight, null, this);
+                this.physics.add.overlap(this.pig_sight, this.player, this.detectionOn, null, this);
+                this.physics.add.collider(this.pig_shot, ground, this.destroyShots, null, this);
+                this.physics.add.overlap(this.pig_shot, this.player, this.HPloss, null, this);
+                this.physics.add.collider(this.pig_soldier, this.player, this.HPloss, null, this);
+
+
+
+
+
+                //this.physics.add.overlap(this.pigSight,this.player,this.detected,null,this);
+
+
+                ////////////////PLACEMENT OBJETS SUR CARTE//////////
+
+                carteDuNiveau.getObjectLayer('enemy').objects.forEach((soldier) => {
+                    const soldierSprite = this.pig_soldier.create(soldier.x, soldier.y - soldier.height, 'pig').setOrigin(0).setOffset(0, 6).setSize(20, 32);
+                    //console.log(soldier.x)
+                });
+
+                this.blockRight = false
+
+                /////////////////////AJOUT DES SONS//////////////////
+
+                this.combat = this.sound.add("combat", { loop: true });
+                this.alarm = this.sound.add("alarm", { loop: false });
+                this.fire_sound = this.sound.add("shooting", { loop: false });
+                if (this.level == 1) {
+                    this.combat.play({ loop: true })
+                };
+                if (this.level == 0) {
+                    this.eye = this.add.sprite(64, 64, 'EYE')
+                    this.eye.setScrollFactor(0)
+                    this.eye.setDepth(10)
+                };
+
+            }
+            ///////////////////////////////////////////////////////////////////UPDATE///////////////////
+            update() {
+
+                this.moveUp = (this.cursors.up.isDown || this.keys.z.isDown)
+                this.moveLeft = (this.cursors.left.isDown || this.keys.q.isDown)
+                this.moveRight = (this.cursors.right.isDown || this.keys.d.isDown)
+                this.moveDown = (this.cursors.down.isDown || this.keys.s.isDown)
+                this.changescene = (this.keys.g.isDown)
+                //déplacements du joueur
+                if (this.moveLeft) {
+                    this.player.body.setVelocityX(-90)
+                } else if (this.moveRight) {
+                    this.player.body.setVelocityX(90)
+                }
+
+                if (this.moveUp) {
+                    if (this.tombe == false) {
+                        this.player.body.setVelocityY(-100)
+                    }
+                } else if (this.moveDown) {
+                    this.player.body.setVelocityY(100)
+                }
+
+                if (this.changescene)
+                    this.scene.start("sceneJeucombat", {
+
+                    });
+
+
+
+                if (this.moveUp) {
+                    this.player.anims.play('up', true)
+                } else if (this.moveDown) {
+                    this.player.anims.play('down', true)
+                } else
+                    if (this.moveLeft) {
+                        this.player.anims.play('left', true)
+                    } else if (this.moveRight) {
+                        this.player.anims.play('right', true)
+                    }
+                //Permet le déplacement correct dans les angles
+                if (this.cursors.up.isUp && this.cursors.down.isUp && this.cursors.left.isUp && this.cursors.right.isUp) {
+                    //this.player.anims.play('noMove', true);
+                    this.player.setVelocityX(0)
+
+                }
+                //////////////////Jouer animation Idle
+                if (this.jump == false) {
+                    if (this.player.direction == 'left') {
+                        this.player.anims.play('idleDroite', true);
+                    }
+                    if (this.player.direction == 'right') {
+                        this.player.anims.play('idleGauche', true);
+                    }
+                }
+
+                //Système de plannée joueur .
+                this.distanceGround.x = this.player.x
+
+                ////////////Suite procédure tombe
+                if (this.player.body.blocked.down) {
+                    this.distanceGround.y = this.player.y
+                }
+
+                if (this.player.y < this.distanceGround.y - 48) {
+                    this.tombe = true
+                    this.player.body.setVelocityY(0)
+                }
+                else {
+                    this.tombe = false
+                }
+
+
+
+                //console.log(this.distanceGround.x)
+                //console.log(this.distanceGround.y)
+                //Tracking de l'IA
+
+                //console.log(this.enemy_wait)
+                this.pig_soldier.children.iterate(function (soldiers) {
+
+                    // this.Difx = soldiers.x - soldiers.scene.player.x 
+                    if (this.level == 0) {
+                        if (this.originactivator = false) {
+                            this.originenemy = (soldiers.x)
+                        };
+                        this.originactivator = true
+                        this.enemy_move = true
+                        if (this.enemy_move == true) {
+                            if (this.blockRight == false) {
+                                if (this.enemy_wait < 600) {
+                                    soldiers.setVelocityX(70)
+                                    this.enemy_wait += 1
+                                    if (this.enemy_wait == 600) {
+                                        this.blockRight = true
+                                    }
+                                }
+                            }
+
+                            if (this.blockRight == true) {
+                                soldiers.setVelocityX(-70)
+                                this.enemy_wait -= 1
+                                if (this.enemy_wait == 0) {
+                                    this.blockRight = false
+                                }
+                            }
+                        }
+
+                    };
+
+                    if (this.level == 1) {
+                        if (soldiers.x < soldiers.scene.player.x)
+                            soldiers.setVelocityX(320)
+                        if (soldiers.x > soldiers.scene.player.x)
+                            soldiers.setVelocityX(-320)
+                        var distance = Phaser.Math.Distance.Between(soldiers.scene.player.x, soldiers.scene.player.y, soldiers.x, soldiers.y)
+                        //console.log(distance)//obtenir la distance qui sépare le monstre et le joueur
+                    };
+
+                    //génération du tir par coté 
+                    var sight_left = this.pig_sight.create(soldiers.x, soldiers.y, 'sight');
+                    if (soldiers.body.velocity.x < 0) sight_left.setVelocityX(-400)
+                    else sight_left.setVelocityX(400)
+
+
+                    if (this.level == 0) {
+
+                        this.eye = this.add.image(220, 140, 'EYE').setScale(0.8).setScrollFactor(0).setDepth(10);
+
+                    }
+
+
+                    if (this.level == 1) {
+
+                        if (soldiers.x < soldiers.scene.player.x)
+                            soldiers.setVelocityX(70)
+                        if (soldiers.x > soldiers.scene.player.x)
+                            soldiers.setVelocityX(-70)
+                        var distance = Phaser.Math.Distance.Between(soldiers.scene.player.x, soldiers.scene.player.y, soldiers.x, soldiers.y)
+                        this.eye1 = this.add.image(220, 140, 'EYE1').setScale(0.8).setScrollFactor(0).setDepth(10);
+                    };
+
+                    if (this.level == 2) {
+
+                        this.eye1 = this.add.image(220, 140, 'EYE2').setScale(0.8).setScrollFactor(0).setDepth(10);
+                        if (this.shooting_counter < 20)
+                            this.shooting_counter += 0.5
+                        if (this.shooting_counter >= 20)
+                            this.pig_soldier.children.each(function (soldiers) {
+                                this.shots = this.pig_shot.create(soldiers.x, soldiers.y, 'shoot');
+                                this.shots.setVelocity()
+                                this.physics.moveTo(this.shots, this.player.x, this.player.y, 300);
+                                this.shots.rotation = Phaser.Math.Angle.BetweenPoints(this.shots, this.player)
+                                this.balistic_timer += 5
+                                this.shooting_counter += 1
+                                this.fire_sound.play({ loop: false })
+                                if (this.shooting_counter = 30) {
+                                    this.shooting_counter -= 30
+                                }
+                                if (this.balistic_timer >= 50) {
+
+                                    this.shots.destroy()
+                                    this.balistic_timer -= 50
+                                }
+                                console.log(this.shooting_counter)
+
+                            }, this)
+
+                    }
+
+                }, this);
+
+
+                if (this.invincible == true) {
+                    this.immunityTimer -= 1;
+                    if (this.immunityTimer == 0) {
+                        this.immunityTimer = 100;
+                        this.player.setTint(0xffffff);
+                        this.invincible = false;
+                    }
+                }
+
+                //if (this.alarm_counter >1000) {
+
+                //this.combat.play({ loop: true });
+                //};
+
+
+                if (this.level == 1) {
+                    if (this.vue <= 0)
+                        this.hiding += 1
+                    if (this.hiding >= 100)
+                        this.detected = false
+
+                };
+
+
+                if (this.alarm_counter >= 1000) {
+                    this.level = 2;
+
+                };
+                if (this.alarm_counter >= 100) {
+                    if (this.alarm_counter <= 1000) {
+                        this.level = 1;
+                    }
+                };
+                if (this.alarm_counter <= 100) {
+                    this.level = 0;
+                };
+
+                if (this.level == 2) {
+                    this.alarm_counter -= 0.25;
+                };
+
+                if (this.level == 1) {
+                    this.alarm_counter -= 1;
+                };
+
+                if (this.level == 0) {
+                    if (this.alarm_counter >= 1)
+                        this.alarm_counter -= 1;
+
+                    console.log(this.joueurpv)
+                };
+
+                // console.log(this.alarm_counter)
+                // console.log(this.shooting_counter)
+            }
+            /////////////////////procédures////////////////////////////
+            destroySight(pigSight) {
+                pigSight.destroy()
+            };
+
+            destroyShots(pig_shot) {
+                pig_shot.destroy()
+            };
+
+            damagePlayer(player) {
+                player.destroy()
+            };
+
+            detectionOn(pigSight, player) {
+                this.alarm_counter += 1
+                this.cameras.main.shake(15)
+                this.detected = true
+                //if (this.alarm_no_loop == 0) {
+                //this.alarm.play();
+                //}
+
+            };
+
+
+            HPloss(shots, player, joueurpv,invincible) {
+
+                    if (this.joueurpv >= 0)
+                        this.joueurpv -= 1
+
+                if (this.joueurpv <= 0)
+                    this.scene.start("menuMort")
+
+
+
+
+            };
+
+
+
+
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////CHANGEMENT DE SCENE : Scene 2//////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        class sceneJeucombat extends Phaser.Scene {
+            constructor() {
+                super("sceneJeucombat");
+            }
+            init(data) {
+            }
+            preload() {
+                this.load.image("Phaser_tuilesdejeu", "assets/envi_asset.png");
+
+                this.load.tilemapTiledJSON("carte", "assets/map_4.json");
+
+                this.load.spritesheet("perso", "assets/player_character2.png",
+                    { frameWidth: 16, frameHeight: 16 });
+
+                this.load.image("invisible", "assets/invisible.png");
+
+                this.load.spritesheet('perso_idle', 'assets/player_character2.png',
+                    { frameWidth: 16, frameHeight: 16 });
+
+            }
+            create() {
+                const carteDuNiveau = this.add.tilemap("carte");
+
+                const tileset = carteDuNiveau.addTilesetImage(
+                    "envi_asset",
+                    "Phaser_tuilesdejeu"
+                );
+
+                const fond1 = carteDuNiveau.createLayer(
+                    "background1",
+                    tileset
+                );
+
+                const fond = carteDuNiveau.createLayer(
+                    "background",
+                    tileset
+                );
+
+                const ground = carteDuNiveau.createLayer(
+                    "ground",
+                    tileset
+                );
+
+                this.player = this.physics.add.sprite(30, 1500, 'perso');
+                this.player.setBounce(0.3);
+                this.player.setCollideWorldBounds(true);
+                this.physics.add.collider(this.player, ground);
+
+                ground.setCollisionByProperty({ estSolide: true })
+
+                //SETUP CAMERA 
+                this.cameras.main.zoom = 2;
+                this.physics.world.setBounds(0, 0, 3000, 5000);
+                this.cameras.main.setBounds(0, 0, 3000, 5000);
+                this.cameras.main.startFollow(this.player);
+
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.keys = this.input.keyboard.addKeys({
+                    z: Phaser.Input.Keyboard.KeyCodes.Z,
+                    q: Phaser.Input.Keyboard.KeyCodes.Q,
+                    s: Phaser.Input.Keyboard.KeyCodes.S,
+                    d: Phaser.Input.Keyboard.KeyCodes.D,
+                });
+
+                this.distanceGround = this.add.image(0, 0, 'invisible')
+
+
+                this.tombe = false
+
+                //test animation
+                this.anims.create({
+                    key: 'left',
+                    frames: this.anims.generateFrameNumbers('perso', { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+                this.anims.create({
+                    key: 'right',
+                    frames: this.anims.generateFrameNumbers('perso', { start: 4, end: 8 }),
+                    frameRate: 10,
+                    repeat: -1
+                })
+
+            }
+            update() {
+
+                this.moveUp = (this.cursors.up.isDown || this.keys.z.isDown)
+                this.moveLeft = (this.cursors.left.isDown || this.keys.q.isDown)
+                this.moveRight = (this.cursors.right.isDown || this.keys.d.isDown)
+                this.moveDown = (this.cursors.down.isDown || this.keys.s.isDown)
+
+                //déplacements du joueur
+                if (this.moveLeft) {
+                    this.player.body.setVelocityX(-110)
+                } else if (this.moveRight) {
+                    this.player.body.setVelocityX(110)
+                }
+
+                if (this.moveUp) {
+                    if (this.tombe == false) {
+                        this.player.body.setVelocityY(-100)
+                    }
+                } else if (this.moveDown) {
+                    this.player.body.setVelocityY(100)
+                }
+
+
+
+
+
+
+                if (this.moveUp) {
+                    this.player.anims.play('up', true)
+                } else if (this.moveDown) {
+                    this.player.anims.play('down', true)
+                } else
+                    if (this.moveLeft) {
+                        this.player.anims.play('left', true)
+                    } else if (this.moveRight) {
+                        this.player.anims.play('right', true)
+                    }
+                //Permet le déplacement correct dans les angles
+                if (this.cursors.up.isUp && this.cursors.down.isUp && this.cursors.left.isUp && this.cursors.right.isUp) {
+                    //this.player.anims.play('noMove', true);
+                    this.player.setVelocityX(0)
+
+                }
+                if (this.jump == false) {
+                    if (this.player.direction == 'left') {
+                        this.player.anims.play('idleDroite', true); //et animation => gauche
+                    }
+                    if (this.player.direction == 'right') {
+                        this.player.anims.play('idleGauche', true); //et animation => gauche
+                    }
+                }
+
+                //Système de plannée joueur .
+                this.distanceGround.x = this.player.x
+
+
+                if (this.player.body.blocked.down) {
+                    this.distanceGround.y = this.player.y
+                }
+
+                if (this.player.y < this.distanceGround.y - 48) {
+                    this.tombe = true
+                    this.player.body.setVelocityY(0)
+                }
+                else {
+                    this.tombe = false
+                }
+
+
+
+                console.log(this.distanceGround.x)
+                console.log(this.distanceGround.y)
+
+
+            }
+
+
+
+
+        }
+        class menuMort extends Phaser.Scene {
+            constructor() {
+                super("menuMort");
+            }
+            preload() {
+                this.load.image("deathscreen", "assets/deathscreen.png");
+                this.load.image("menubutton", "assets/menubutton.png");
+            }
+            create() {
+                //this.add.image(this.cameras.main.width/2,this.cameras.main.height/2,"menu_screen").setScale(1.2);
+
+                this.menuscreen = this.add.image(340, 230, 'deathscreen').setScale(1.6);
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.startButton = this.add.image(68, 230, 'menubutton').setInteractive().setScale(1.8);
+                // var startButton = this.add.image(68,330, 'menu_play_button').setScale(1.2).setInteractive();
+
+                this.startButton.on('pointerdown', function (pointer) {
+
+                    this.scene.scene.start("menuJeu", {
+
+
+                    })
+
+                });
+            }
+            update() {
+
+            }
+        }
+
+        var config = {
+            type: Phaser.AUTO,
+            width: 768, height: 432,
+            //width: 1536, height: 864,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 1000 },
+                    debug: true
+                }
+            },
+            pixelArt: true,
+            scene: [menuJeu, sceneJeu, sceneJeucombat, menuMort],
+        };
+
+        new Phaser.Game(config);
+
+
+    </script>
+</body>
+
+</html>
